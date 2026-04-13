@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: linkforge_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: linkforge
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    container_name: linkforge_redis
+    ports:
+      - "6379:6379"

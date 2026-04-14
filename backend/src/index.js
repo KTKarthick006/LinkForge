@@ -6,12 +6,7 @@ const { createTables } = require("./models/urlModel");
 dotenv.config();
 
 const app = express();
-app.use(cors({
-  origin: [
-    'https://link-forge-two.vercel.app',
-    'https://link-forge-hjriatskv-ktkarthick006s-projects.vercel.app'
-  ]
-}))
+app.use(cors());
 app.use(express.json());
 
 app.use("/", require("./routes/shorten"));

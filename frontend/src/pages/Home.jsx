@@ -1,44 +1,49 @@
-import { useState } from 'react'
-import axios from 'axios'
-import { useNavigate } from 'react-router-dom'
+import { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-const API = 'http://localhost:3000'
+const API = "https://linkforge-pdez.onrender.com";
 
 export default function Home() {
-  const [url, setUrl] = useState('')
-  const [alias, setAlias] = useState('')
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const navigate = useNavigate()
+  const [url, setUrl] = useState("");
+  const [alias, setAlias] = useState("");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    setError('')
-    setResult(null)
-    if (!url) return setError('Please enter a URL')
-    setLoading(true)
+    setError("");
+    setResult(null);
+    if (!url) return setError("Please enter a URL");
+    setLoading(true);
     try {
-      const res = await axios.post(`${API}/shorten`, { url, alias: alias || undefined })
-      setResult(res.data)
+      const res = await axios.post(`${API}/shorten`, {
+        url,
+        alias: alias || undefined,
+      });
+      setResult(res.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Something went wrong')
+      setError(err.response?.data?.error || "Something went wrong");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(result.shortUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+    navigator.clipboard.writeText(result.shortUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-xl">
         <h1 className="text-4xl font-bold mb-2 text-center">LinkForge</h1>
-        <p className="text-gray-400 text-center mb-8">Shorten URLs. Track clicks. Ship faster.</p>
+        <p className="text-gray-400 text-center mb-8">
+          Shorten URLs. Track clicks. Ship faster.
+        </p>
 
         <div className="bg-gray-900 rounded-2xl p-6 flex flex-col gap-4">
           <input
@@ -60,7 +65,7 @@ export default function Home() {
             disabled={loading}
             className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg px-4 py-3 font-semibold transition"
           >
-            {loading ? 'Shortening...' : 'Shorten URL'}
+            {loading ? "Shortening..." : "Shorten URL"}
           </button>
 
           {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -81,7 +86,7 @@ export default function Home() {
                   onClick={handleCopy}
                   className="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-lg transition"
                 >
-                  {copied ? 'Copied!' : 'Copy'}
+                  {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
               <button
@@ -95,5 +100,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-  )
+  );
 }

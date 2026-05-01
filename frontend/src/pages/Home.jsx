@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -11,19 +11,51 @@ export default function Home() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [user, setUser] = useState(null);
+  const [myLinks, setMyLinks] = useState([]);
+  const [showLinks, setShowLinks] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    axios
+      .get(`${API}/auth/me`, { withCredentials: true })
+      .then((res) => {
+        setUser(res.data.user);
+        return axios.get(`${API}/my-links`, { withCredentials: true });
+      })
+      .then((res) => setMyLinks(res.data.links))
+      .catch(() => setUser(null));
+  }, []);
+
+  const handleLogin = () => {
+    window.location.href = `${API}/auth/google`;
+  };
+
+  const handleLogout = () => {
+    axios.get(`${API}/auth/logout`, { withCredentials: true }).then(() => {
+      setUser(null);
+      setMyLinks([]);
+      setShowLinks(false);
+    });
+  };
 
   const handleSubmit = async () => {
     setError("");
     setResult(null);
     if (!url) return setError("Please enter a URL");
+    if (!user) return setError("Please log in to shorten URLs");
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/shorten`, {
-        url,
-        alias: alias || undefined,
-      });
+      const res = await axios.post(
+        `${API}/shorten`,
+        { url, alias: alias || undefined },
+        { withCredentials: true },
+      );
       setResult(res.data);
+      const links = await axios.get(`${API}/my-links`, {
+        withCredentials: true,
+      });
+      setMyLinks(links.data.links);
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
     } finally {
@@ -38,13 +70,55 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl">
-        <h1 className="text-4xl font-bold mb-2 text-center">LinkForge</h1>
-        <p className="text-gray-400 text-center mb-8">
-          Shorten URLs. Track clicks. Ship faster.
-        </p>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-4xl font-bold">LinkForge</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Shorten URLs. Track clicks. Ship faster.
+            </p>
+          </div>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">{user.name}</span>
+              <button
+                onClick={handleLogout}
+                className="text-sm bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleLogin}
+              className="flex items-center gap-2 bg-white text-gray-900 hover:bg-gray-100 px-4 py-2 rounded-lg text-sm font-semibold transition"
+            >
+              <svg width="18" height="18" viewBox="0 0 48 48">
+                <path
+                  fill="#EA4335"
+                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                />
+              </svg>
+              Sign in with Google
+            </button>
+          )}
+        </div>
 
+        {/* Shorten form */}
         <div className="bg-gray-900 rounded-2xl p-6 flex flex-col gap-4">
           <input
             type="text"
@@ -98,6 +172,50 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* My Links toggle button */}
+        {user && (
+          <button
+            onClick={() => setShowLinks(!showLinks)}
+            className="mt-4 w-full bg-gray-800 hover:bg-gray-700 rounded-xl px-4 py-3 text-sm font-medium text-gray-300 transition flex items-center justify-between"
+          >
+            <span>My Links ({myLinks.length})</span>
+            <span>{showLinks ? "▲ Hide" : "▼ Show"}</span>
+          </button>
+        )}
+
+        {/* My Links list */}
+        {user && showLinks && (
+          <div className="mt-2 flex flex-col gap-2">
+            {myLinks.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-4">
+                No links yet
+              </p>
+            ) : (
+              myLinks.map((link) => (
+                <div
+                  key={link.id}
+                  className="bg-gray-900 rounded-xl px-4 py-3 flex items-center justify-between"
+                >
+                  <div className="flex flex-col gap-1 flex-1 min-w-0">
+                    <p className="text-indigo-400 font-mono text-sm truncate">
+                      {API}/{link.short_code}
+                    </p>
+                    <p className="text-gray-500 text-xs truncate">
+                      {link.original_url}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/dashboard/${link.short_code}`)}
+                    className="text-xs text-gray-400 hover:text-indigo-400 ml-4 transition shrink-0"
+                  >
+                    Stats
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -13,7 +13,8 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [user, setUser] = useState(null);
   const [myLinks, setMyLinks] = useState([]);
-  const [showLinks, setShowLinks] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +28,16 @@ export default function Home() {
       .catch(() => setUser(null));
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleLogin = () => {
     window.location.href = `${API}/auth/google`;
   };
@@ -35,7 +46,7 @@ export default function Home() {
     axios.get(`${API}/auth/logout`, { withCredentials: true }).then(() => {
       setUser(null);
       setMyLinks([]);
-      setShowLinks(false);
+      setShowDropdown(false);
     });
   };
 
@@ -80,15 +91,75 @@ export default function Home() {
               Shorten URLs. Track clicks. Ship faster.
             </p>
           </div>
+
           {user ? (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-400">{user.name}</span>
+            <div className="relative" ref={dropdownRef}>
               <button
-                onClick={handleLogout}
-                className="text-sm bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg transition"
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-xl transition"
               >
-                Logout
+                <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold">
+                  {user.name?.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm text-gray-300">{user.name}</span>
+                <span className="text-gray-500 text-xs">
+                  {showDropdown ? "▲" : "▼"}
+                </span>
               </button>
+
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-72 bg-gray-900 border border-gray-800 rounded-xl shadow-xl z-10">
+                  <div className="px-4 py-3 border-b border-gray-800">
+                    <p className="text-sm font-medium">{user.name}</p>
+                    <p className="text-xs text-gray-500">{user.email}</p>
+                  </div>
+
+                  <div className="px-4 py-3">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                      My Links ({myLinks.length})
+                    </p>
+                    {myLinks.length === 0 ? (
+                      <p className="text-gray-600 text-sm">No links yet</p>
+                    ) : (
+                      <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+                        {myLinks.map((link) => (
+                          <div
+                            key={link.id}
+                            className="flex items-center justify-between gap-2 bg-gray-800 rounded-lg px-3 py-2"
+                          >
+                            <div className="flex flex-col min-w-0">
+                              <p className="text-indigo-400 font-mono text-xs truncate">
+                                /{link.short_code}
+                              </p>
+                              <p className="text-gray-500 text-xs truncate">
+                                {link.original_url}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setShowDropdown(false);
+                                navigate(`/dashboard/${link.short_code}`);
+                              }}
+                              className="text-xs text-indigo-400 hover:text-indigo-300 shrink-0 transition"
+                            >
+                              Stats
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="px-4 py-3 border-t border-gray-800">
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-sm text-red-400 hover:text-red-300 text-left transition"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <button
@@ -172,50 +243,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        {/* My Links toggle button */}
-        {user && (
-          <button
-            onClick={() => setShowLinks(!showLinks)}
-            className="mt-4 w-full bg-gray-800 hover:bg-gray-700 rounded-xl px-4 py-3 text-sm font-medium text-gray-300 transition flex items-center justify-between"
-          >
-            <span>My Links ({myLinks.length})</span>
-            <span>{showLinks ? "▲ Hide" : "▼ Show"}</span>
-          </button>
-        )}
-
-        {/* My Links list */}
-        {user && showLinks && (
-          <div className="mt-2 flex flex-col gap-2">
-            {myLinks.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">
-                No links yet
-              </p>
-            ) : (
-              myLinks.map((link) => (
-                <div
-                  key={link.id}
-                  className="bg-gray-900 rounded-xl px-4 py-3 flex items-center justify-between"
-                >
-                  <div className="flex flex-col gap-1 flex-1 min-w-0">
-                    <p className="text-indigo-400 font-mono text-sm truncate">
-                      {API}/{link.short_code}
-                    </p>
-                    <p className="text-gray-500 text-xs truncate">
-                      {link.original_url}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => navigate(`/dashboard/${link.short_code}`)}
-                    className="text-xs text-gray-400 hover:text-indigo-400 ml-4 transition shrink-0"
-                  >
-                    Stats
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

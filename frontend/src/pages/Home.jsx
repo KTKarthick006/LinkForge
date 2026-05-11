@@ -17,15 +17,39 @@ export default function Home() {
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
+  const getToken = () => localStorage.getItem("lf_token");
+
+  const authHeaders = () => ({
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+
   useEffect(() => {
+    // Check if token came back from Google OAuth
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if (token) {
+      localStorage.setItem("lf_token", token);
+      window.history.replaceState({}, "", "/");
+    }
+
+    const savedToken = token || getToken();
+    if (!savedToken) return;
+
     axios
-      .get(`${API}/auth/me`, { withCredentials: true })
+      .get(`${API}/auth/me`, {
+        headers: { Authorization: `Bearer ${savedToken}` },
+      })
       .then((res) => {
         setUser(res.data.user);
-        return axios.get(`${API}/my-links`, { withCredentials: true });
+        return axios.get(`${API}/my-links`, {
+          headers: { Authorization: `Bearer ${savedToken}` },
+        });
       })
       .then((res) => setMyLinks(res.data.links))
-      .catch(() => setUser(null));
+      .catch(() => {
+        localStorage.removeItem("lf_token");
+        setUser(null);
+      });
   }, []);
 
   useEffect(() => {
@@ -43,11 +67,10 @@ export default function Home() {
   };
 
   const handleLogout = () => {
-    axios.get(`${API}/auth/logout`, { withCredentials: true }).then(() => {
-      setUser(null);
-      setMyLinks([]);
-      setShowDropdown(false);
-    });
+    localStorage.removeItem("lf_token");
+    setUser(null);
+    setMyLinks([]);
+    setShowDropdown(false);
   };
 
   const handleSubmit = async () => {
@@ -60,12 +83,10 @@ export default function Home() {
       const res = await axios.post(
         `${API}/shorten`,
         { url, alias: alias || undefined },
-        { withCredentials: true },
+        authHeaders(),
       );
       setResult(res.data);
-      const links = await axios.get(`${API}/my-links`, {
-        withCredentials: true,
-      });
+      const links = await axios.get(`${API}/my-links`, authHeaders());
       setMyLinks(links.data.links);
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
@@ -83,7 +104,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-4xl font-bold">LinkForge</h1>
@@ -113,7 +133,6 @@ export default function Home() {
                     <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                   </div>
-
                   <div className="px-4 py-3">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
                       My Links ({myLinks.length})
@@ -149,7 +168,6 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-
                   <div className="px-4 py-3 border-t border-gray-800">
                     <button
                       onClick={handleLogout}
@@ -189,7 +207,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Shorten form */}
         <div className="bg-gray-900 rounded-2xl p-6 flex flex-col gap-4">
           <input
             type="text"

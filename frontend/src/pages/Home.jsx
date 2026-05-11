@@ -39,13 +39,13 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tokenFromUrl = params.get("token");
+    const hash = window.location.hash;
+    const tokenFromHash = hash.startsWith("#token=") ? hash.slice(7) : null;
 
-    if (tokenFromUrl) {
-      localStorage.setItem("lf_token", tokenFromUrl);
+    if (tokenFromHash) {
+      localStorage.setItem("lf_token", tokenFromHash);
       window.history.replaceState({}, "", "/");
-      fetchUserAndLinks(tokenFromUrl);
+      fetchUserAndLinks(tokenFromHash);
     } else {
       const saved = getToken();
       if (saved) {
@@ -112,7 +112,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-4xl font-bold">LinkForge</h1>
@@ -122,7 +121,7 @@ export default function Home() {
           </div>
 
           {authLoading ? (
-            <div className="w-8 h-8 rounded-full bg-gray-800 animate-pulse" />
+            <div className="w-24 h-9 rounded-xl bg-gray-800 animate-pulse" />
           ) : user ? (
             <div className="relative" ref={dropdownRef}>
               <button
@@ -146,7 +145,6 @@ export default function Home() {
                     <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                   </div>
-
                   <div className="px-4 py-3">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
                       My Links ({myLinks.length})
@@ -184,7 +182,6 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-
                   <div className="px-4 py-3 border-t border-gray-800">
                     <button
                       onClick={handleLogout}
@@ -224,7 +221,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Shorten form */}
         <div className="bg-gray-900 rounded-2xl p-6 flex flex-col gap-4">
           <input
             type="text"

@@ -1,8 +1,8 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const session = require("express-session");
 const passport = require("./config/passport");
+const authMiddleware = require("./middleware/authMiddleware");
 const { createTables } = require("./models/urlModel");
 
 dotenv.config();
@@ -17,22 +17,8 @@ app.use(
 );
 
 app.use(express.json());
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: true,
-      sameSite: "none",
-      maxAge: 24 * 60 * 60 * 1000,
-    },
-  }),
-);
-
 app.use(passport.initialize());
-app.use(passport.session());
+app.use(authMiddleware);
 
 app.use("/", require("./routes/auth"));
 app.use("/", require("./routes/shorten"));

@@ -27,6 +27,7 @@
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "geoip-lite": "^1.4.10",
+    "jsonwebtoken": "^9.0.3",
     "nanoid": "^5.1.7",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",

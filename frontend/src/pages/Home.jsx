@@ -14,42 +14,46 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [myLinks, setMyLinks] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
   const getToken = () => localStorage.getItem("lf_token");
 
-  const authHeaders = () => ({
-    headers: { Authorization: `Bearer ${getToken()}` },
-  });
+  const fetchUserAndLinks = async (token) => {
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [meRes, linksRes] = await Promise.all([
+        axios.get(`${API}/auth/me`, { headers }),
+        axios.get(`${API}/my-links`, { headers }),
+      ]);
+      setUser(meRes.data.user);
+      setMyLinks(linksRes.data.links);
+    } catch {
+      localStorage.removeItem("lf_token");
+      setUser(null);
+      setMyLinks([]);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Check if token came back from Google OAuth
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    if (token) {
-      localStorage.setItem("lf_token", token);
+    const tokenFromUrl = params.get("token");
+
+    if (tokenFromUrl) {
+      localStorage.setItem("lf_token", tokenFromUrl);
       window.history.replaceState({}, "", "/");
+      fetchUserAndLinks(tokenFromUrl);
+    } else {
+      const saved = getToken();
+      if (saved) {
+        fetchUserAndLinks(saved);
+      } else {
+        setAuthLoading(false);
+      }
     }
-
-    const savedToken = token || getToken();
-    if (!savedToken) return;
-
-    axios
-      .get(`${API}/auth/me`, {
-        headers: { Authorization: `Bearer ${savedToken}` },
-      })
-      .then((res) => {
-        setUser(res.data.user);
-        return axios.get(`${API}/my-links`, {
-          headers: { Authorization: `Bearer ${savedToken}` },
-        });
-      })
-      .then((res) => setMyLinks(res.data.links))
-      .catch(() => {
-        localStorage.removeItem("lf_token");
-        setUser(null);
-      });
   }, []);
 
   useEffect(() => {
@@ -72,6 +76,10 @@ export default function Home() {
     setMyLinks([]);
     setShowDropdown(false);
   };
+
+  const authHeaders = () => ({
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
 
   const handleSubmit = async () => {
     setError("");
@@ -104,6 +112,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl">
+        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-4xl font-bold">LinkForge</h1>
@@ -112,7 +121,9 @@ export default function Home() {
             </p>
           </div>
 
-          {user ? (
+          {authLoading ? (
+            <div className="w-8 h-8 rounded-full bg-gray-800 animate-pulse" />
+          ) : user ? (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
@@ -121,7 +132,9 @@ export default function Home() {
                 <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold">
                   {user.name?.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-sm text-gray-300">{user.name}</span>
+                <span className="text-sm text-gray-300 max-w-[120px] truncate">
+                  {user.name}
+                </span>
                 <span className="text-gray-500 text-xs">
                   {showDropdown ? "▲" : "▼"}
                 </span>
@@ -133,12 +146,15 @@ export default function Home() {
                     <p className="text-sm font-medium">{user.name}</p>
                     <p className="text-xs text-gray-500">{user.email}</p>
                   </div>
+
                   <div className="px-4 py-3">
                     <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
                       My Links ({myLinks.length})
                     </p>
                     {myLinks.length === 0 ? (
-                      <p className="text-gray-600 text-sm">No links yet</p>
+                      <p className="text-gray-600 text-sm">
+                        No links yet — shorten one!
+                      </p>
                     ) : (
                       <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
                         {myLinks.map((link) => (
@@ -168,6 +184,7 @@ export default function Home() {
                       </div>
                     )}
                   </div>
+
                   <div className="px-4 py-3 border-t border-gray-800">
                     <button
                       onClick={handleLogout}
@@ -207,6 +224,7 @@ export default function Home() {
           )}
         </div>
 
+        {/* Shorten form */}
         <div className="bg-gray-900 rounded-2xl p-6 flex flex-col gap-4">
           <input
             type="text"
